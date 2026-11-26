@@ -2,7 +2,7 @@
 
 import { StoreApp } from '@/types/repo';
 import { motion, AnimatePresence } from 'framer-motion';
-import { X, ExternalLink, Github, Star, Calendar } from 'lucide-react';
+import { X, ExternalLink, Code2, Star, Calendar } from 'lucide-react';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import { useEffect } from 'react';
@@ -104,7 +104,7 @@ export function AppModal({ app, onClose }: AppModalProps) {
                     rel="noopener noreferrer"
                     className="inline-flex items-center gap-2 px-4 py-2.5 rounded-full text-sm font-semibold bg-zinc-100 hover:bg-zinc-200 dark:bg-zinc-800 dark:hover:bg-zinc-700 transition-colors"
                   >
-                    <Github className="w-4 h-4" />
+                    <Code2 className="w-4 h-4" />
                     Codice
                   </a>
                   {app.liveUrl && (

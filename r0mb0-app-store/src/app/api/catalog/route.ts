@@ -2,8 +2,6 @@ import { NextResponse } from 'next/server';
 import { fetchGitHubCatalog } from '@/lib/github';
 import { CatalogResponse } from '@/types/repo';
 
-export const revalidate = 3600; // Rigenera al massimo ogni ora
-
 export async function GET() {
   try {
     const apps = await fetchGitHubCatalog();
