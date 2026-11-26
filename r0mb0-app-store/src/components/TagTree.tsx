@@ -3,6 +3,7 @@
 import { CategoryNode, TagCount } from '@/lib/categorizer';
 import { motion, AnimatePresence } from 'framer-motion';
 import { ChevronRight, FolderTree, RotateCcw, Tag, X } from 'lucide-react';
+import { useTranslation } from './LanguageProvider';
 
 interface TagTreeProps {
   categories: CategoryNode[];
@@ -23,8 +24,16 @@ export function TagTree({
   subTags,
   onResetAll,
 }: TagTreeProps) {
+  const { t } = useTranslation();
   const hasActiveFilters = selectedCategory !== null || selectedTags.length > 0;
-  const activeCategoryLabel = categories.find((c) => c.id === selectedCategory)?.label;
+
+  const getCategoryLabel = (id: string, fallback: string) =>
+    t.categories[id] || fallback;
+
+  const activeCategoryNode = categories.find((c) => c.id === selectedCategory);
+  const activeCategoryLabel = activeCategoryNode
+    ? getCategoryLabel(activeCategoryNode.id, activeCategoryNode.label)
+    : null;
 
   return (
     <section className="rounded-3xl bg-white/80 dark:bg-zinc-900/70 backdrop-blur-md border border-zinc-200/80 dark:border-zinc-800/80 p-4 sm:p-5 space-y-4 shadow-sm">
@@ -32,7 +41,7 @@ export function TagTree({
       <div className="flex items-center justify-between gap-2">
         <div className="flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-zinc-500 dark:text-zinc-400">
           <FolderTree className="w-4 h-4 text-blue-500" />
-          <span>Categorie (Tronco)</span>
+          <span>{t.categoriesTrunk}</span>
         </div>
 
         {hasActiveFilters && (
@@ -41,7 +50,7 @@ export function TagTree({
             className="inline-flex items-center gap-1.5 text-xs font-semibold text-blue-600 dark:text-blue-400 hover:underline"
           >
             <RotateCcw className="w-3.5 h-3.5" />
-            Reimposta filtri
+            {t.resetFilters}
           </button>
         )}
       </div>
@@ -56,7 +65,7 @@ export function TagTree({
               : 'bg-zinc-100 text-zinc-700 hover:bg-zinc-200 dark:bg-zinc-800 dark:text-zinc-300 dark:hover:bg-zinc-700'
           }`}
         >
-          Tutti
+          {t.allCategories}
         </button>
 
         {categories.map((cat) => {
@@ -71,7 +80,7 @@ export function TagTree({
                   : 'bg-zinc-100 text-zinc-700 hover:bg-zinc-200 dark:bg-zinc-800 dark:text-zinc-300 dark:hover:bg-zinc-700'
               }`}
             >
-              <span>{cat.label}</span>
+              <span>{getCategoryLabel(cat.id, cat.label)}</span>
               <span
                 className={`text-xs px-2 py-0.5 rounded-full ${
                   active
@@ -86,7 +95,7 @@ export function TagTree({
         })}
       </div>
 
-      {/* Percorso attivo (Breadcrumb dell'albero) */}
+      {/* Percorso attivo (Breadcrumb) */}
       <AnimatePresence>
         {hasActiveFilters && (
           <motion.div
@@ -95,11 +104,11 @@ export function TagTree({
             exit={{ opacity: 0, height: 0 }}
             className="flex flex-wrap items-center gap-1.5 pt-2 border-t border-zinc-100 dark:border-zinc-800 text-xs"
           >
-            <span className="text-zinc-400 font-medium mr-1">Percorso:</span>
+            <span className="text-zinc-400 font-medium mr-1">{t.activePath}</span>
             {activeCategoryLabel && (
               <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-blue-100 dark:bg-blue-950 text-blue-700 dark:text-blue-300 font-semibold">
                 {activeCategoryLabel}
-                <button onClick={() => onSelectCategory(null)} aria-label="Rimuovi categoria">
+                <button onClick={() => onSelectCategory(null)} aria-label={t.close}>
                   <X className="w-3 h-3" />
                 </button>
               </span>
@@ -109,7 +118,7 @@ export function TagTree({
                 <ChevronRight className="w-3.5 h-3.5 text-zinc-400" />
                 <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-indigo-100 dark:bg-indigo-950 text-indigo-700 dark:text-indigo-300 font-semibold">
                   #{tag}
-                  <button onClick={() => onToggleTag(tag)} aria-label={`Rimuovi ${tag}`}>
+                  <button onClick={() => onToggleTag(tag)} aria-label={t.close}>
                     <X className="w-3 h-3" />
                   </button>
                 </span>
@@ -126,8 +135,8 @@ export function TagTree({
             <Tag className="w-3.5 h-3.5 text-indigo-500" />
             <span>
               {selectedCategory || selectedTags.length > 0
-                ? 'Raffina per sottotema (Rami):'
-                : 'Tag popolari:'}
+                ? t.refineSubtopics
+                : t.popularTags}
             </span>
           </div>
 

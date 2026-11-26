@@ -2,8 +2,11 @@
 
 import { motion } from 'framer-motion';
 import { Sparkles } from 'lucide-react';
+import { useTranslation } from './LanguageProvider';
 
 export function LoadingScreen() {
+  const { t } = useTranslation();
+
   return (
     <div className="fixed inset-0 z-50 flex flex-col items-center justify-center bg-zinc-50 dark:bg-zinc-950 px-6">
       <motion.div
@@ -29,7 +32,7 @@ export function LoadingScreen() {
         transition={{ delay: 0.15 }}
         className="text-2xl font-bold tracking-tight text-center"
       >
-        Sincronizzazione dello Store
+        {t.loadingTitle}
       </motion.h2>
 
       <motion.p
@@ -38,7 +41,7 @@ export function LoadingScreen() {
         transition={{ delay: 0.25 }}
         className="mt-2 text-sm text-zinc-500 dark:text-zinc-400 text-center max-w-sm"
       >
-        Analisi delle repository, estrazione dei README e preparazione delle categorie...
+        {t.loadingSubtitle}
       </motion.p>
 
       <div className="mt-8 w-56 h-1.5 rounded-full bg-zinc-200 dark:bg-zinc-800 overflow-hidden">

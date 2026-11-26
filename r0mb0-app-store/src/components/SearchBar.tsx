@@ -2,6 +2,7 @@
 
 import { Search, X } from 'lucide-react';
 import { useEffect, useRef } from 'react';
+import { useTranslation } from './LanguageProvider';
 
 interface SearchBarProps {
   value: string;
@@ -11,6 +12,7 @@ interface SearchBarProps {
 
 export function SearchBar({ value, onChange, totalResults }: SearchBarProps) {
   const inputRef = useRef<HTMLInputElement>(null);
+  const { t } = useTranslation();
 
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
@@ -31,7 +33,7 @@ export function SearchBar({ value, onChange, totalResults }: SearchBarProps) {
         type="text"
         value={value}
         onChange={(e) => onChange(e.target.value)}
-        placeholder="Cerca strumenti, tag, PDF, convertitori... (premi /)"
+        placeholder={t.searchPlaceholder}
         className="w-full pl-12 pr-24 py-3.5 rounded-full bg-white dark:bg-zinc-900 border border-zinc-200/90 dark:border-zinc-800 shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500/40 focus:border-blue-500 transition-all text-sm sm:text-base placeholder:text-zinc-400"
       />
 
@@ -42,7 +44,7 @@ export function SearchBar({ value, onChange, totalResults }: SearchBarProps) {
         {value && (
           <button
             onClick={() => onChange('')}
-            aria-label="Cancella ricerca"
+            aria-label={t.clearSearch}
             className="p-1.5 rounded-full bg-zinc-100 hover:bg-zinc-200 dark:bg-zinc-800 dark:hover:bg-zinc-700 text-zinc-500 transition-colors"
           >
             <X className="w-4 h-4" />

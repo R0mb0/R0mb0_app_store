@@ -4,9 +4,11 @@ import { useTheme } from 'next-themes';
 import { Monitor, Moon, Sun } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { motion } from 'framer-motion';
+import { useTranslation } from './LanguageProvider';
 
 export function ThemeToggle() {
   const { theme, setTheme } = useTheme();
+  const { t } = useTranslation();
   const [mounted, setMounted] = useState(false);
 
   useEffect(() => setMounted(true), []);
@@ -16,9 +18,9 @@ export function ThemeToggle() {
   }
 
   const options = [
-    { id: 'system', icon: Monitor, label: 'Auto' },
-    { id: 'light', icon: Sun, label: 'Chiaro' },
-    { id: 'dark', icon: Moon, label: 'Scuro' },
+    { id: 'system', icon: Monitor, label: t.themeAuto },
+    { id: 'light', icon: Sun, label: t.themeLight },
+    { id: 'dark', icon: Moon, label: t.themeDark },
   ] as const;
 
   return (

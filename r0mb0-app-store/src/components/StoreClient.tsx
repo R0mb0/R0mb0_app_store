@@ -8,7 +8,9 @@ import {
   buildSubTagBranches,
   getAppCategories,
 } from '@/lib/categorizer';
+import { useTranslation } from './LanguageProvider';
 import { LoadingScreen } from './LoadingScreen';
+import { LanguageSelector } from './LanguageSelector';
 import { ThemeToggle } from './ThemeToggle';
 import { SearchBar } from './SearchBar';
 import { TagTree } from './TagTree';
@@ -18,26 +20,26 @@ import { LayoutGrid, RefreshCw, SearchX } from 'lucide-react';
 import { motion } from 'framer-motion';
 
 export function StoreClient() {
+  const { t } = useTranslation();
   const [catalog, setCatalog] = useState<CatalogResponse | null>(null);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  const [hasError, setHasError] = useState(false);
   const [selectedApp, setSelectedApp] = useState<StoreApp | null>(null);
 
-  // Stati di ricerca e navigazione ad albero
   const [query, setQuery] = useState('');
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
   const [selectedTags, setSelectedTags] = useState<string[]>([]);
 
   const loadCatalog = async () => {
     setLoading(true);
-    setError(null);
+    setHasError(false);
     try {
       const res = await fetch('/api/catalog');
-      if (!res.ok) throw new Error('Impossibile caricare il catalogo da GitHub');
+      if (!res.ok) throw new Error('API Error');
       const data: CatalogResponse = await res.json();
       setCatalog(data);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Errore imprevisto');
+    } catch {
+      setHasError(true);
     } finally {
       setLoading(false);
     }
@@ -48,11 +50,8 @@ export function StoreClient() {
   }, []);
 
   const apps = useMemo(() => catalog?.apps ?? [], [catalog]);
-
-  // 1. Tronco delle categorie (calcolato su tutte le app)
   const categories = useMemo(() => buildCategoryTrunk(apps), [apps]);
 
-  // 2. Filtro per Categoria + Sotto-tag selezionati
   const treeFilteredApps = useMemo(() => {
     return apps.filter((app) => {
       if (selectedCategory && !getAppCategories(app).includes(selectedCategory)) {
@@ -65,13 +64,11 @@ export function StoreClient() {
     });
   }, [apps, selectedCategory, selectedTags]);
 
-  // 3. Rami (sotto-tag) disponibili nel nodo corrente dell'albero
   const subTags = useMemo(
     () => buildSubTagBranches(treeFilteredApps, selectedTags),
     [treeFilteredApps, selectedTags]
   );
 
-  // 4. Istanza Fuse.js per ricerca fuzzy intelligente
   const fuse = useMemo(() => {
     return new Fuse(treeFilteredApps, {
       keys: [
@@ -85,7 +82,6 @@ export function StoreClient() {
     });
   }, [treeFilteredApps]);
 
-  // 5. Risultati finali
   const visibleApps = useMemo(() => {
     const trimmed = query.trim();
     if (!trimmed) return treeFilteredApps;
@@ -100,7 +96,7 @@ export function StoreClient() {
 
   const handleSelectCategory = (id: string | null) => {
     setSelectedCategory(id);
-    setSelectedTags([]); // Riparte dal tronco scelto
+    setSelectedTags([]);
   };
 
   const handleResetAll = () => {
@@ -111,16 +107,16 @@ export function StoreClient() {
 
   if (loading) return <LoadingScreen />;
 
-  if (error || !catalog) {
+  if (hasError || !catalog) {
     return (
       <div className="min-h-screen flex flex-col items-center justify-center p-6 text-center">
-        <p className="text-red-500 font-medium mb-4">{error}</p>
+        <p className="text-red-500 font-medium mb-4">{t.loadError}</p>
         <button
           onClick={loadCatalog}
           className="inline-flex items-center gap-2 px-5 py-2.5 rounded-full bg-blue-600 text-white font-semibold hover:bg-blue-700 transition-colors"
         >
           <RefreshCw className="w-4 h-4" />
-          Riprova
+          {t.retry}
         </button>
       </div>
     );
@@ -128,37 +124,36 @@ export function StoreClient() {
 
   return (
     <div className="min-h-screen flex flex-col">
-      {/* Navbar */}
       <header className="sticky top-0 z-30 backdrop-blur-xl bg-zinc-50/80 dark:bg-zinc-950/80 border-b border-zinc-200/70 dark:border-zinc-800/70">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 h-16 flex items-center justify-between gap-4">
-          <div className="flex items-center gap-3">
-            <div className="w-9 h-9 rounded-2xl bg-gradient-to-tr from-blue-600 to-indigo-500 flex items-center justify-center text-white shadow-md shadow-blue-500/20">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 h-16 flex items-center justify-between gap-3">
+          <div className="flex items-center gap-3 min-w-0">
+            <div className="w-9 h-9 rounded-2xl bg-gradient-to-tr from-blue-600 to-indigo-500 flex items-center justify-center text-white shadow-md shadow-blue-500/20 shrink-0">
               <LayoutGrid className="w-5 h-5" />
             </div>
-            <div>
-              <h1 className="font-bold text-lg leading-none tracking-tight">
+            <div className="truncate">
+              <h1 className="font-bold text-base sm:text-lg leading-none tracking-tight truncate">
                 {catalog.username} Store
               </h1>
               <span className="text-xs text-zinc-500 dark:text-zinc-400">
-                {catalog.totalCount} progetti disponibili
+                {catalog.totalCount} {t.projectsAvailable}
               </span>
             </div>
           </div>
 
-          <ThemeToggle />
+          <div className="flex items-center gap-2 shrink-0">
+            <LanguageSelector />
+            <ThemeToggle />
+          </div>
         </div>
       </header>
 
-      {/* Contenuto principale */}
       <main className="max-w-7xl w-full mx-auto px-4 sm:px-6 py-8 flex-1 space-y-6">
-        {/* Barra di ricerca intelligente */}
         <SearchBar
           value={query}
           onChange={setQuery}
           totalResults={visibleApps.length}
         />
 
-        {/* Albero dei Tag (Tronco -> Rami) */}
         <TagTree
           categories={categories}
           selectedCategory={selectedCategory}
@@ -169,7 +164,6 @@ export function StoreClient() {
           onResetAll={handleResetAll}
         />
 
-        {/* Griglia dei risultati */}
         {visibleApps.length > 0 ? (
           <motion.div
             layout
@@ -187,21 +181,20 @@ export function StoreClient() {
         ) : (
           <div className="py-16 flex flex-col items-center justify-center text-center rounded-3xl border border-dashed border-zinc-300 dark:border-zinc-800">
             <SearchX className="w-12 h-12 text-zinc-400 mb-3" />
-            <h3 className="text-lg font-bold">Nessun progetto trovato</h3>
+            <h3 className="text-lg font-bold">{t.emptyTitle}</h3>
             <p className="text-sm text-zinc-500 dark:text-zinc-400 mt-1 mb-5">
-              Prova a cambiare parola chiave o a rimuovere qualche filtro dall&apos;albero.
+              {t.emptySubtitle}
             </p>
             <button
               onClick={handleResetAll}
               className="px-5 py-2.5 rounded-full text-sm font-semibold bg-blue-600 text-white hover:bg-blue-700 transition-colors"
             >
-              Mostra tutti i progetti
+              {t.showAllButton}
             </button>
           </div>
         )}
       </main>
 
-      {/* Modale di approfondimento */}
       <AppModal app={selectedApp} onClose={() => setSelectedApp(null)} />
     </div>
   );
