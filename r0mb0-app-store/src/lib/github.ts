@@ -122,7 +122,7 @@ export async function fetchGitHubCatalog(): Promise<StoreApp[]> {
       throw new Error(`Errore GitHub API: ${response.status} ${response.statusText}`);
     }
 
-    onst json: GraphQLResponse = await response.json();
+    const json: GraphQLResponse = await response.json();
 
     if (json.errors) {
       throw new Error(`Errore GraphQL: ${json.errors[0]?.message}`);
