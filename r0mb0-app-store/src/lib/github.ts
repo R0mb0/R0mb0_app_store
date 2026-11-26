@@ -76,6 +76,21 @@ interface GraphQLRepoNode {
   readmeLower: { text?: string } | null;
 }
 
+interface GraphQLResponse {
+  data?: {
+    user?: {
+      repositories?: {
+        pageInfo: {
+          hasNextPage: boolean;
+          endCursor: string | null;
+        };
+        nodes: GraphQLRepoNode[];
+      };
+    };
+  };
+  errors?: Array<{ message: string }>;
+}
+
 export async function fetchGitHubCatalog(): Promise<StoreApp[]> {
   const username = process.env.GITHUB_USERNAME || 'R0mb0';
   const token = process.env.GITHUB_TOKEN;
@@ -89,7 +104,7 @@ export async function fetchGitHubCatalog(): Promise<StoreApp[]> {
   let cursor: string | null = null;
 
   while (hasNextPage) {
-    const response = await fetch(GITHUB_GRAPHQL_URL, {
+    const response: Response = await fetch(GITHUB_GRAPHQL_URL, {
       method: 'POST',
       headers: {
         Authorization: `Bearer ${token}`,
@@ -107,7 +122,7 @@ export async function fetchGitHubCatalog(): Promise<StoreApp[]> {
       throw new Error(`Errore GitHub API: ${response.status} ${response.statusText}`);
     }
 
-    const json = await response.json();
+    onst json: GraphQLResponse = await response.json();
 
     if (json.errors) {
       throw new Error(`Errore GraphQL: ${json.errors[0]?.message}`);
@@ -116,7 +131,7 @@ export async function fetchGitHubCatalog(): Promise<StoreApp[]> {
     const reposData = json.data?.user?.repositories;
     if (!reposData) break;
 
-    for (const node of reposData.nodes as GraphQLRepoNode[]) {
+    for (const node of reposData.nodes) {
       // Salta fork, repo archiviate e la repo del profilo stesso (es. R0mb0/R0mb0)
       if (node.isFork || node.isArchived || node.name.toLowerCase() === username.toLowerCase()) {
         continue;
