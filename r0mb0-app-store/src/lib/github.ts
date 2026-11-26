@@ -1,17 +1,18 @@
 import { StoreApp } from '@/types/repo';
-import {
-  extractThumbnailFromReadme,
-  extractThumbnailFromRepoTree,
-  RepoTreeEntry,
-} from './readmeParser';
+import { extractThumbnailFromReadme } from './readmeParser';
 
 const GITHUB_GRAPHQL_URL = 'https://api.github.com/graphql';
+
+const IMAGE_FOLDER_REGEX =
+  /^(readme[_-]?)?(imgs?|im[ag]{2}es?|screenshots?|previews?|media|assets)$/i;
+const RASTER_EXT_REGEX = /\.(png|jpe?g|webp|gif)$/i;
+const BADGE_NAME_REGEX = /(badge|shield|status|license|workflow|sponsor)/i;
 
 const REPOS_QUERY = `
   query GetUserRepos($username: String!, $cursor: String) {
     user(login: $username) {
       repositories(
-        first: 50
+        first: 30
         after: $cursor
         privacy: PUBLIC
         ownerAffiliations: OWNER
@@ -56,14 +57,6 @@ const REPOS_QUERY = `
               entries {
                 name
                 type
-                object {
-                  ... on Tree {
-                    entries {
-                      name
-                      type
-                    }
-                  }
-                }
               }
             }
           }
@@ -102,7 +95,7 @@ interface GraphQLRepoNode {
     nodes: Array<{ topic: { name: string } }>;
   };
   rootTree: {
-    entries?: RepoTreeEntry[];
+    entries?: Array<{ name: string; type: string }>;
   } | null;
   readmeUpper: { text?: string } | null;
   readmeLower: { text?: string } | null;
@@ -123,6 +116,52 @@ interface GraphQLResponse {
   errors?: Array<{ message: string }>;
 }
 
+async function fetchFirstImageFromFolder(
+  username: string,
+  repoName: string,
+  branch: string,
+  folderName: string,
+  token: string
+): Promise<string | null> {
+  try {
+    const res = await fetch(
+      `https://api.github.com/repos/${username}/${repoName}/contents/${encodeURIComponent(
+        folderName
+      )}?ref=${encodeURIComponent(branch)}`,
+      {
+        headers: {
+          Authorization: `Bearer ${token}`,
+          Accept: 'application/vnd.github.v3+json',
+        },
+        next: { revalidate: 3600 },
+      }
+    );
+
+    if (!res.ok) return null;
+    const files: Array<{ name: string; type: string; download_url?: string }> =
+      await res.json();
+
+    if (!Array.isArray(files)) return null;
+
+    const firstImg = files.find(
+      (f) =>
+        f.type === 'file' &&
+        RASTER_EXT_REGEX.test(f.name) &&
+        !BADGE_NAME_REGEX.test(f.name)
+    );
+
+    if (!firstImg) return null;
+    return (
+      firstImg.download_url ||
+      `https://raw.githubusercontent.com/${username}/${repoName}/${branch}/${encodeURIComponent(
+        folderName
+      )}/${encodeURIComponent(firstImg.name)}`
+    );
+  } catch {
+    return null;
+  }
+}
+
 export async function fetchGitHubCatalog(): Promise<StoreApp[]> {
   const username = process.env.GITHUB_USERNAME || 'R0mb0';
   const token = process.env.GITHUB_TOKEN;
@@ -131,7 +170,7 @@ export async function fetchGitHubCatalog(): Promise<StoreApp[]> {
     throw new Error('Variabile GITHUB_TOKEN mancante');
   }
 
-  const allApps: StoreApp[] = [];
+  const rawNodes: GraphQLRepoNode[] = [];
   let hasNextPage = true;
   let cursor: string | null = null;
 
@@ -170,30 +209,51 @@ export async function fetchGitHubCatalog(): Promise<StoreApp[]> {
       ) {
         continue;
       }
+      rawNodes.push(node);
+    }
 
+    hasNextPage = reposData.pageInfo.hasNextPage;
+    cursor = reposData.pageInfo.endCursor;
+  }
+
+  // Costruisce le app e risolve le cartelle immagini in parallelo solo dove serve
+  const allApps = await Promise.all(
+    rawNodes.map(async (node): Promise<StoreApp> => {
       const defaultBranch = node.defaultBranchRef?.name || 'main';
       const readme = node.readmeUpper?.text || node.readmeLower?.text || '';
       const topics = node.repositoryTopics.nodes.map((t) =>
         t.topic.name.toLowerCase()
       );
 
-      // 1. Prima cerca nel README (escludendo i badge)
-      // 2. Se non trova nulla, cerca nelle cartelle readme_imgs / Readme_images / images
-      const thumbnail =
-        extractThumbnailFromReadme(readme, username, node.name, defaultBranch) ||
-        extractThumbnailFromRepoTree(
-          node.rootTree?.entries,
-          username,
-          node.name,
-          defaultBranch
-        );
+      let thumbnail = extractThumbnailFromReadme(
+        readme,
+        username,
+        node.name,
+        defaultBranch
+      );
+
+      if (!thumbnail && node.rootTree?.entries) {
+        const imageFolder = node.rootTree.entries
+          .filter((e) => e.type === 'tree' && IMAGE_FOLDER_REGEX.test(e.name))
+          .sort((a, b) => (/readme/i.test(a.name) ? -1 : /readme/i.test(b.name) ? 1 : 0))[0];
+
+        if (imageFolder) {
+          thumbnail = await fetchFirstImageFromFolder(
+            username,
+            node.name,
+            defaultBranch,
+            imageFolder.name,
+            token
+          );
+        }
+      }
 
       const languages = (node.languages?.nodes || []).map((l) => ({
         name: l.name,
         color: l.color || '#64748b',
       }));
 
-      allApps.push({
+      return {
         id: node.id,
         name: node.name,
         description: node.description || '',
@@ -210,12 +270,9 @@ export async function fetchGitHubCatalog(): Promise<StoreApp[]> {
         topics,
         thumbnail,
         readme,
-      });
-    }
-
-    hasNextPage = reposData.pageInfo.hasNextPage;
-    cursor = reposData.pageInfo.endCursor;
-  }
+      };
+    })
+  );
 
   return allApps;
 }
