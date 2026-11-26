@@ -6,6 +6,17 @@ Turn your GitHub profile into a modern, interactive App Store.
 Automatically showcase your public repositories with smart thumbnail extraction, fuzzy search, an interactive category &amp; topic tree, language/stack filters (including a quick HTML / CSS / JS preset), multi-language UI, and Light/Dark mode — all powered by Next.js + Vercel.
 </p>
 
+[![Codacy Badge](https://app.codacy.com/project/badge/Grade/c19b6a0dce8b4ba0ad1ea69c81d5791c)](https://app.codacy.com/gh/R0mb0/R0mb0_app_store/dashboard?utm_source=gh&utm_medium=referral&utm_content=&utm_campaign=Badge_grade)
+[![Maintenance](https://img.shields.io/badge/Maintained%3F-yes-green.svg)](https://github.com/R0mb0/R0mb0_app_store)
+[![Open Source Love svg3](https://badges.frapsoft.com/os/v3/open-source.svg?v=103)](https://github.com/R0mb0/R0mb0_app_store)
+![License](https://img.shields.io/badge/license-BSD%203--Clause-blue.svg?style=plastic)
+[![Donate](https://img.shields.io/badge/PayPal-Donate%20to%20Author-blue.svg)](http://paypal.me/R0mb0)
+
+
+<h2><a href="https://r0mb0appstore.vercel.app/">👉 Click here to test the app! 👈</a></h2>
+
+[![01.png](https://github.com/R0mb0/R0mb0_app_store/blob/main/Readme_imgs/01.png)](https://r0mb0appstore.vercel.app/)
+
 <div align="center">
   <a href="http://paypal.me/R0mb0">
     <picture>
