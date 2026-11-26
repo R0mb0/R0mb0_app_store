@@ -5,8 +5,10 @@ import Fuse from 'fuse.js';
 import { CatalogResponse, StoreApp } from '@/types/repo';
 import {
   buildCategoryTrunk,
+  buildLanguageList,
   buildSubTagBranches,
   getAppCategories,
+  WEB_TRIO_LANGUAGES,
 } from '@/lib/categorizer';
 import { useTranslation } from './LanguageProvider';
 import { LoadingScreen } from './LoadingScreen';
@@ -28,6 +30,7 @@ export function StoreClient() {
 
   const [query, setQuery] = useState('');
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
+  const [selectedLanguages, setSelectedLanguages] = useState<string[]>([]);
   const [selectedTags, setSelectedTags] = useState<string[]>([]);
 
   const loadCatalog = async () => {
@@ -51,18 +54,38 @@ export function StoreClient() {
 
   const apps = useMemo(() => catalog?.apps ?? [], [catalog]);
   const categories = useMemo(() => buildCategoryTrunk(apps), [apps]);
+  const languages = useMemo(() => buildLanguageList(apps), [apps]);
+
+  const webTrioCount = useMemo(() => {
+    return apps.filter((app) => {
+      const names = app.languages?.map((l) => l.name) || (app.language ? [app.language.name] : []);
+      return names.some((n) => WEB_TRIO_LANGUAGES.includes(n));
+    }).length;
+  }, [apps]);
 
   const treeFilteredApps = useMemo(() => {
     return apps.filter((app) => {
       if (selectedCategory && !getAppCategories(app).includes(selectedCategory)) {
         return false;
       }
+      if (selectedLanguages.length > 0) {
+        const appLangNames =
+          app.languages && app.languages.length > 0
+            ? app.languages.map((l) => l.name)
+            : app.language
+            ? [app.language.name]
+            : [];
+        const matchesLang = selectedLanguages.some((sel) =>
+          appLangNames.includes(sel)
+        );
+        if (!matchesLang) return false;
+      }
       if (selectedTags.length > 0) {
         return selectedTags.every((tag) => app.topics.includes(tag));
       }
       return true;
     });
-  }, [apps, selectedCategory, selectedTags]);
+  }, [apps, selectedCategory, selectedLanguages, selectedTags]);
 
   const subTags = useMemo(
     () => buildSubTagBranches(treeFilteredApps, selectedTags),
@@ -94,6 +117,20 @@ export function StoreClient() {
     );
   };
 
+  const handleToggleLanguage = (lang: string) => {
+    setSelectedLanguages((prev) =>
+      prev.includes(lang) ? prev.filter((l) => l !== lang) : [...prev, lang]
+    );
+  };
+
+  const handleToggleWebTrio = () => {
+    const isAlreadyWebTrio =
+      WEB_TRIO_LANGUAGES.every((l) => selectedLanguages.includes(l)) &&
+      selectedLanguages.length === WEB_TRIO_LANGUAGES.length;
+
+    setSelectedLanguages(isAlreadyWebTrio ? [] : [...WEB_TRIO_LANGUAGES]);
+  };
+
   const handleSelectCategory = (id: string | null) => {
     setSelectedCategory(id);
     setSelectedTags([]);
@@ -102,6 +139,7 @@ export function StoreClient() {
   const handleResetAll = () => {
     setQuery('');
     setSelectedCategory(null);
+    setSelectedLanguages([]);
     setSelectedTags([]);
   };
 
@@ -158,6 +196,11 @@ export function StoreClient() {
           categories={categories}
           selectedCategory={selectedCategory}
           onSelectCategory={handleSelectCategory}
+          languages={languages}
+          selectedLanguages={selectedLanguages}
+          onToggleLanguage={handleToggleLanguage}
+          onToggleWebTrio={handleToggleWebTrio}
+          webTrioCount={webTrioCount}
           selectedTags={selectedTags}
           onToggleTag={handleToggleTag}
           subTags={subTags}

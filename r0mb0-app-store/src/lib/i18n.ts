@@ -11,6 +11,8 @@ export const SUPPORTED_LOCALES: { code: Locale; label: string; short: string }[]
 ];
 
 export interface Dictionary {
+  languagesLabel: string;
+  webTrioLabel: string;
   languageAuto: string;
   themeAuto: string;
   themeLight: string;
@@ -42,6 +44,7 @@ export interface Dictionary {
 
 export const DICTIONARIES: Record<Locale, Dictionary> = {
   en: {
+    languagesLabel: 'Languages & Stack', webTrioLabel: 'HTML / CSS / JS',
     languageAuto: 'Auto',
     themeAuto: 'Auto',
     themeLight: 'Light',
@@ -79,6 +82,7 @@ export const DICTIONARIES: Record<Locale, Dictionary> = {
     },
   },
   it: {
+    languagesLabel: 'Linguaggi & Stack', webTrioLabel: 'HTML / CSS / JS',
     languageAuto: 'Auto',
     themeAuto: 'Auto',
     themeLight: 'Chiaro',
@@ -116,6 +120,7 @@ export const DICTIONARIES: Record<Locale, Dictionary> = {
     },
   },
   es: {
+    languagesLabel: 'Lenguajes y Stack', webTrioLabel: 'HTML / CSS / JS',
     languageAuto: 'Auto',
     themeAuto: 'Auto',
     themeLight: 'Claro',
@@ -153,6 +158,7 @@ export const DICTIONARIES: Record<Locale, Dictionary> = {
     },
   },
   fr: {
+    languagesLabel: 'Langages & Stack', webTrioLabel: 'HTML / CSS / JS',
     languageAuto: 'Auto',
     themeAuto: 'Auto',
     themeLight: 'Clair',
@@ -190,6 +196,7 @@ export const DICTIONARIES: Record<Locale, Dictionary> = {
     },
   },
   de: {
+    languagesLabel: 'Sprachen & Stack', webTrioLabel: 'HTML / CSS / JS',
     languageAuto: 'Auto',
     themeAuto: 'Auto',
     themeLight: 'Hell',
@@ -227,6 +234,7 @@ export const DICTIONARIES: Record<Locale, Dictionary> = {
     },
   },
   pt: {
+    languagesLabel: 'Linguagens e Stack', webTrioLabel: 'HTML / CSS / JS',
     languageAuto: 'Auto',
     themeAuto: 'Auto',
     themeLight: 'Claro',

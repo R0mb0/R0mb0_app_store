@@ -116,3 +116,37 @@ export function buildSubTagBranches(
     .sort((a, b) => b.count - a.count || a.tag.localeCompare(b.tag))
     .slice(0, limit);
 }
+
+export const WEB_TRIO_LANGUAGES = ['HTML', 'CSS', 'JavaScript'];
+
+export interface LanguageNode {
+  name: string;
+  color: string;
+  count: number;
+}
+
+export function buildLanguageList(apps: StoreApp[]): LanguageNode[] {
+  const map = new Map<string, LanguageNode>();
+
+  apps.forEach((app) => {
+    const appLangs =
+      app.languages && app.languages.length > 0
+        ? app.languages
+        : app.language
+        ? [app.language]
+        : [];
+
+    appLangs.forEach((lang) => {
+      const existing = map.get(lang.name);
+      if (existing) {
+        existing.count += 1;
+      } else {
+        map.set(lang.name, { name: lang.name, color: lang.color, count: 1 });
+      }
+    });
+  });
+
+  return Array.from(map.values()).sort(
+    (a, b) => b.count - a.count || a.name.localeCompare(b.name)
+  );
+}

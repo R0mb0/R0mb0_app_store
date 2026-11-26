@@ -1,5 +1,9 @@
 import { StoreApp } from '@/types/repo';
-import { extractThumbnailFromReadme } from './readmeParser';
+import {
+  extractThumbnailFromReadme,
+  extractThumbnailFromRepoTree,
+  RepoTreeEntry,
+} from './readmeParser';
 
 const GITHUB_GRAPHQL_URL = 'https://api.github.com/graphql';
 
@@ -34,10 +38,32 @@ const REPOS_QUERY = `
             name
             color
           }
+          languages(first: 10, orderBy: { field: SIZE, direction: DESC }) {
+            nodes {
+              name
+              color
+            }
+          }
           repositoryTopics(first: 20) {
             nodes {
               topic {
                 name
+              }
+            }
+          }
+          rootTree: object(expression: "HEAD:") {
+            ... on Tree {
+              entries {
+                name
+                type
+                object {
+                  ... on Tree {
+                    entries {
+                      name
+                      type
+                    }
+                  }
+                }
               }
             }
           }
@@ -69,9 +95,15 @@ interface GraphQLRepoNode {
   isArchived: boolean;
   defaultBranchRef: { name: string } | null;
   primaryLanguage: { name: string; color: string } | null;
+  languages: {
+    nodes: Array<{ name: string; color: string | null }>;
+  } | null;
   repositoryTopics: {
     nodes: Array<{ topic: { name: string } }>;
   };
+  rootTree: {
+    entries?: RepoTreeEntry[];
+  } | null;
   readmeUpper: { text?: string } | null;
   readmeLower: { text?: string } | null;
 }
@@ -96,7 +128,7 @@ export async function fetchGitHubCatalog(): Promise<StoreApp[]> {
   const token = process.env.GITHUB_TOKEN;
 
   if (!token) {
-    throw new Error('Variabile GITHUB_TOKEN mancante in .env.local');
+    throw new Error('Variabile GITHUB_TOKEN mancante');
   }
 
   const allApps: StoreApp[] = [];
@@ -114,7 +146,6 @@ export async function fetchGitHubCatalog(): Promise<StoreApp[]> {
         query: REPOS_QUERY,
         variables: { username, cursor },
       }),
-      // Cache lato server Next.js: 1 ora
       next: { revalidate: 3600 },
     });
 
@@ -132,26 +163,50 @@ export async function fetchGitHubCatalog(): Promise<StoreApp[]> {
     if (!reposData) break;
 
     for (const node of reposData.nodes) {
-      // Salta fork, repo archiviate e la repo del profilo stesso (es. R0mb0/R0mb0)
-      if (node.isFork || node.isArchived || node.name.toLowerCase() === username.toLowerCase()) {
+      if (
+        node.isFork ||
+        node.isArchived ||
+        node.name.toLowerCase() === username.toLowerCase()
+      ) {
         continue;
       }
 
       const defaultBranch = node.defaultBranchRef?.name || 'main';
       const readme = node.readmeUpper?.text || node.readmeLower?.text || '';
-      const topics = node.repositoryTopics.nodes.map((t) => t.topic.name.toLowerCase());
-      const thumbnail = extractThumbnailFromReadme(readme, username, node.name, defaultBranch);
+      const topics = node.repositoryTopics.nodes.map((t) =>
+        t.topic.name.toLowerCase()
+      );
+
+      // 1. Prima cerca nel README (escludendo i badge)
+      // 2. Se non trova nulla, cerca nelle cartelle readme_imgs / Readme_images / images
+      const thumbnail =
+        extractThumbnailFromReadme(readme, username, node.name, defaultBranch) ||
+        extractThumbnailFromRepoTree(
+          node.rootTree?.entries,
+          username,
+          node.name,
+          defaultBranch
+        );
+
+      const languages = (node.languages?.nodes || []).map((l) => ({
+        name: l.name,
+        color: l.color || '#64748b',
+      }));
 
       allApps.push({
         id: node.id,
         name: node.name,
         description: node.description || '',
         repoUrl: node.url,
-        liveUrl: node.homepageUrl && node.homepageUrl.trim() !== '' ? node.homepageUrl : null,
+        liveUrl:
+          node.homepageUrl && node.homepageUrl.trim() !== ''
+            ? node.homepageUrl
+            : null,
         stars: node.stargazerCount,
         updatedAt: node.updatedAt,
         defaultBranch,
         language: node.primaryLanguage,
+        languages,
         topics,
         thumbnail,
         readme,

@@ -1,14 +1,31 @@
 'use client';
 
-import { CategoryNode, TagCount } from '@/lib/categorizer';
+import {
+  CategoryNode,
+  LanguageNode,
+  TagCount,
+  WEB_TRIO_LANGUAGES,
+} from '@/lib/categorizer';
 import { motion, AnimatePresence } from 'framer-motion';
-import { ChevronRight, FolderTree, RotateCcw, Tag, X } from 'lucide-react';
+import {
+  ChevronRight,
+  Code2,
+  FolderTree,
+  RotateCcw,
+  Tag,
+  X,
+} from 'lucide-react';
 import { useTranslation } from './LanguageProvider';
 
 interface TagTreeProps {
   categories: CategoryNode[];
   selectedCategory: string | null;
   onSelectCategory: (id: string | null) => void;
+  languages: LanguageNode[];
+  selectedLanguages: string[];
+  onToggleLanguage: (lang: string) => void;
+  onToggleWebTrio: () => void;
+  webTrioCount: number;
   selectedTags: string[];
   onToggleTag: (tag: string) => void;
   subTags: TagCount[];
@@ -19,13 +36,25 @@ export function TagTree({
   categories,
   selectedCategory,
   onSelectCategory,
+  languages,
+  selectedLanguages,
+  onToggleLanguage,
+  onToggleWebTrio,
+  webTrioCount,
   selectedTags,
   onToggleTag,
   subTags,
   onResetAll,
 }: TagTreeProps) {
   const { t } = useTranslation();
-  const hasActiveFilters = selectedCategory !== null || selectedTags.length > 0;
+  const hasActiveFilters =
+    selectedCategory !== null ||
+    selectedLanguages.length > 0 ||
+    selectedTags.length > 0;
+
+  const isWebTrioActive =
+    WEB_TRIO_LANGUAGES.every((l) => selectedLanguages.includes(l)) &&
+    selectedLanguages.length === WEB_TRIO_LANGUAGES.length;
 
   const getCategoryLabel = (id: string, fallback: string) =>
     t.categories[id] || fallback;
@@ -95,6 +124,64 @@ export function TagTree({
         })}
       </div>
 
+      {/* Filtro Linguaggi & Stack */}
+      {languages.length > 0 && (
+        <div className="pt-3 border-t border-zinc-100 dark:border-zinc-800 space-y-2.5">
+          <div className="flex items-center gap-1.5 text-xs font-semibold text-zinc-500 dark:text-zinc-400">
+            <Code2 className="w-3.5 h-3.5 text-emerald-500" />
+            <span>{t.languagesLabel}:</span>
+          </div>
+
+          <div className="flex flex-wrap gap-1.5">
+            {/* Raggruppamento rapido HTML / CSS / JS */}
+            {webTrioCount > 0 && (
+              <button
+                onClick={onToggleWebTrio}
+                className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold transition-all ${
+                  isWebTrioActive
+                    ? 'bg-emerald-600 text-white shadow-sm shadow-emerald-500/25'
+                    : 'bg-emerald-50 text-emerald-700 hover:bg-emerald-100 dark:bg-emerald-950/60 dark:text-emerald-300 dark:hover:bg-emerald-900/60 border border-emerald-200/70 dark:border-emerald-800/60'
+                }`}
+              >
+                <span>{t.webTrioLabel}</span>
+                <span
+                  className={`text-[10px] px-1.5 py-0.2 rounded-full ${
+                    isWebTrioActive
+                      ? 'bg-white/20 text-white'
+                      : 'bg-emerald-200/70 dark:bg-emerald-900 text-emerald-800 dark:text-emerald-200'
+                  }`}
+                >
+                  {webTrioCount}
+                </span>
+              </button>
+            )}
+
+            {/* Singoli linguaggi */}
+            {languages.map((lang) => {
+              const active = selectedLanguages.includes(lang.name);
+              return (
+                <button
+                  key={lang.name}
+                  onClick={() => onToggleLanguage(lang.name)}
+                  className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium transition-all ${
+                    active
+                      ? 'bg-zinc-900 text-white dark:bg-white dark:text-zinc-900 font-semibold shadow-sm'
+                      : 'bg-zinc-100/80 hover:bg-zinc-200/80 dark:bg-zinc-800/80 dark:hover:bg-zinc-700 text-zinc-700 dark:text-zinc-300'
+                  }`}
+                >
+                  <span
+                    className="w-2 h-2 rounded-full shrink-0"
+                    style={{ backgroundColor: lang.color }}
+                  />
+                  <span>{lang.name}</span>
+                  <span className="text-[10px] opacity-70">{lang.count}</span>
+                </button>
+              );
+            })}
+          </div>
+        </div>
+      )}
+
       {/* Percorso attivo (Breadcrumb) */}
       <AnimatePresence>
         {hasActiveFilters && (
@@ -113,6 +200,17 @@ export function TagTree({
                 </button>
               </span>
             )}
+            {selectedLanguages.map((lang) => (
+              <span
+                key={lang}
+                className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-emerald-100 dark:bg-emerald-950 text-emerald-700 dark:text-emerald-300 font-semibold"
+              >
+                {lang}
+                <button onClick={() => onToggleLanguage(lang)} aria-label={t.close}>
+                  <X className="w-3 h-3" />
+                </button>
+              </span>
+            ))}
             {selectedTags.map((tag) => (
               <div key={tag} className="inline-flex items-center gap-1.5">
                 <ChevronRight className="w-3.5 h-3.5 text-zinc-400" />
@@ -128,15 +226,13 @@ export function TagTree({
         )}
       </AnimatePresence>
 
-      {/* Livello 2+: Sotto-tag contestuali (Rami) */}
+      {/* Sotto-tag contestuali (Rami) */}
       {subTags.length > 0 && (
         <div className="pt-3 border-t border-zinc-100 dark:border-zinc-800 space-y-2.5">
           <div className="flex items-center gap-1.5 text-xs font-semibold text-zinc-500 dark:text-zinc-400">
             <Tag className="w-3.5 h-3.5 text-indigo-500" />
             <span>
-              {selectedCategory || selectedTags.length > 0
-                ? t.refineSubtopics
-                : t.popularTags}
+              {hasActiveFilters ? t.refineSubtopics : t.popularTags}
             </span>
           </div>
 

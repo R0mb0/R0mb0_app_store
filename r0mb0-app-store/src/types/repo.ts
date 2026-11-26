@@ -1,3 +1,8 @@
+export interface RepoLanguage {
+  name: string;
+  color: string;
+}
+
 export interface StoreApp {
   id: string;
   name: string;
@@ -7,10 +12,8 @@ export interface StoreApp {
   stars: number;
   updatedAt: string;
   defaultBranch: string;
-  language: {
-    name: string;
-    color: string;
-  } | null;
+  language: RepoLanguage | null;
+  languages: RepoLanguage[];
   topics: string[];
   thumbnail: string | null;
   readme: string;
