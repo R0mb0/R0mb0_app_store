@@ -5,12 +5,85 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { X, ExternalLink, Code2, Star, Calendar } from 'lucide-react';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
+import rehypeRaw from 'rehype-raw';
+import rehypeSanitize, { defaultSchema } from 'rehype-sanitize';
 import { useEffect } from 'react';
 import { useTranslation } from './LanguageProvider';
 
 interface AppModalProps {
   app: StoreApp | null;
   onClose: () => void;
+}
+
+const sanitizeSchema = {
+  ...defaultSchema,
+  tagNames: [...(defaultSchema.tagNames || []), 'picture', 'source'],
+  attributes: {
+    ...defaultSchema.attributes,
+    '*': [...(defaultSchema.attributes?.['*'] || []), 'align', 'className'],
+    img: [
+      ...(defaultSchema.attributes?.img || []),
+      'src',
+      'alt',
+      'width',
+      'height',
+      'loading',
+    ],
+    source: ['srcset', 'media', 'type'],
+    a: [...(defaultSchema.attributes?.a || []), 'href', 'target', 'rel'],
+  },
+};
+
+function resolveAssetUrl(
+  rawUrl: string | undefined,
+  owner: string,
+  repo: string,
+  branch: string
+): string | undefined {
+  if (!rawUrl) return undefined;
+  const trimmed = rawUrl.trim();
+
+  if (trimmed.startsWith('http://') || trimmed.startsWith('https://')) {
+    if (trimmed.includes('github.com/') && trimmed.includes('/blob/')) {
+      return trimmed
+        .replace('github.com/', 'raw.githubusercontent.com/')
+        .replace('/blob/', '/');
+    }
+    return trimmed;
+  }
+
+  if (
+    trimmed.startsWith('#') ||
+    trimmed.startsWith('mailto:') ||
+    trimmed.startsWith('data:')
+  ) {
+    return trimmed;
+  }
+
+  const cleanPath = trimmed.replace(/^(\.\/|\/)/, '');
+  return `https://raw.githubusercontent.com/${owner}/${repo}/${branch}/${cleanPath}`;
+}
+
+function resolveLinkUrl(
+  rawUrl: string | undefined,
+  owner: string,
+  repo: string,
+  branch: string
+): string | undefined {
+  if (!rawUrl) return undefined;
+  const trimmed = rawUrl.trim();
+
+  if (
+    trimmed.startsWith('http://') ||
+    trimmed.startsWith('https://') ||
+    trimmed.startsWith('#') ||
+    trimmed.startsWith('mailto:')
+  ) {
+    return trimmed;
+  }
+
+  const cleanPath = trimmed.replace(/^(\.\/|\/)/, '');
+  return `https://github.com/${owner}/${repo}/blob/${branch}/${cleanPath}`;
 }
 
 export function AppModal({ app, onClose }: AppModalProps) {
@@ -29,6 +102,10 @@ export function AppModal({ app, onClose }: AppModalProps) {
       window.removeEventListener('keydown', handleKeyDown);
     };
   }, [app, onClose]);
+
+  const ownerMatch = app?.repoUrl.match(/github\.com\/([^/]+)\//i);
+  const owner = ownerMatch?.[1] || 'R0mb0';
+  const branch = app?.defaultBranch || 'main';
 
   return (
     <AnimatePresence>
@@ -143,8 +220,52 @@ export function AppModal({ app, onClose }: AppModalProps) {
                   {t.readmeHeading}
                 </h3>
                 {app.readme ? (
-                  <div className="space-y-3 text-sm text-zinc-700 dark:text-zinc-300 leading-relaxed [&_h1]:text-xl [&_h1]:font-bold [&_h1]:mt-4 [&_h2]:text-lg [&_h2]:font-bold [&_h2]:mt-4 [&_h3]:font-semibold [&_a]:text-blue-600 dark:[&_a]:text-blue-400 [&_a]:underline [&_code]:px-1.5 [&_code]:py-0.5 [&_code]:rounded-md [&_code]:bg-zinc-100 dark:[&_code]:bg-zinc-800 [&_pre]:p-4 [&_pre]:rounded-2xl [&_pre]:bg-zinc-100 dark:[&_pre]:bg-zinc-950 [&_pre]:overflow-x-auto [&_ul]:list-disc [&_ul]:pl-5 [&_img]:rounded-2xl [&_img]:my-3 [&_img]:max-w-full">
-                    <ReactMarkdown remarkPlugins={[remarkGfm]}>
+                  <div className="space-y-3 text-sm text-zinc-700 dark:text-zinc-300 leading-relaxed [&_div[align='center']]:text-center [&_div[align='center']]:flex [&_div[align='center']]:flex-col [&_div[align='center']]:items-center [&_div[align='center']]:gap-2 [&_h1]:text-xl [&_h1]:font-bold [&_h1]:mt-5 [&_h1]:mb-2 [&_h2]:text-lg [&_h2]:font-bold [&_h2]:mt-5 [&_h2]:mb-2 [&_h2]:pb-1.5 [&_h2]:border-b [&_h2]:border-zinc-200 dark:[&_h2]:border-zinc-800 [&_h3]:font-semibold [&_h3]:mt-4 [&_p]:my-2 [&_hr]:my-5 [&_hr]:border-zinc-200 dark:[&_hr]:border-zinc-800 [&_a]:text-blue-600 dark:[&_a]:text-blue-400 [&_a]:underline [&_code]:px-1.5 [&_code]:py-0.5 [&_code]:rounded-md [&_code]:bg-zinc-100 dark:[&_code]:bg-zinc-800 [&_pre]:p-4 [&_pre]:rounded-2xl [&_pre]:bg-zinc-100 dark:[&_pre]:bg-zinc-950 [&_pre]:overflow-x-auto [&_pre_code]:bg-transparent [&_pre_code]:p-0 [&_ul]:list-disc [&_ul]:pl-5 [&_ul]:space-y-1.5 [&_ol]:list-decimal [&_ol]:pl-5 [&_ol]:space-y-1.5 [&_blockquote]:border-l-4 [&_blockquote]:border-blue-500/50 [&_blockquote]:pl-4 [&_blockquote]:italic [&_blockquote]:text-zinc-500 [&_table]:w-full [&_table]:border-collapse [&_th]:border [&_th]:border-zinc-200 dark:[&_th]:border-zinc-800 [&_th]:p-2 [&_th]:bg-zinc-50 dark:[&_th]:bg-zinc-800/50 [&_td]:border [&_td]:border-zinc-200 dark:[&_td]:border-zinc-800 [&_td]:p-2 [&_img]:inline-block [&_img]:rounded-xl [&_img]:my-1 [&_img]:max-w-full">
+                    <ReactMarkdown
+                      remarkPlugins={[remarkGfm]}
+                      rehypePlugins={[rehypeRaw, [rehypeSanitize, sanitizeSchema]]}
+                      components={{
+                        img: ({ src, alt, ...props }) => (
+                          <img
+                            {...props}
+                            src={resolveAssetUrl(
+                              typeof src === 'string' ? src : undefined,
+                              owner,
+                              app.name,
+                              branch
+                            )}
+                            alt={alt || ''}
+                            loading="lazy"
+                          />
+                        ),
+                        source: ({ srcSet, ...props }) => (
+                          <source
+                            {...props}
+                            srcSet={resolveAssetUrl(
+                              typeof srcSet === 'string' ? srcSet : undefined,
+                              owner,
+                              app.name,
+                              branch
+                            )}
+                          />
+                        ),
+                        a: ({ href, children, ...props }) => (
+                          <a
+                            {...props}
+                            href={resolveLinkUrl(
+                              typeof href === 'string' ? href : undefined,
+                              owner,
+                              app.name,
+                              branch
+                            )}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                          >
+                            {children}
+                          </a>
+                        ),
+                      }}
+                    >
                       {app.readme}
                     </ReactMarkdown>
                   </div>
