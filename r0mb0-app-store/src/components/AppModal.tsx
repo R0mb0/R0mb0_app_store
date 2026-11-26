@@ -29,7 +29,7 @@ const sanitizeSchema = {
       'height',
       'loading',
     ],
-    source: ['srcset', 'media', 'type'],
+    source: ['srcSet', 'media', 'type'],
     a: [...(defaultSchema.attributes?.a || []), 'href', 'target', 'rel'],
   },
 };
@@ -228,7 +228,7 @@ export function AppModal({ app, onClose }: AppModalProps) {
                         remarkPlugins={[remarkGfm]}
                         rehypePlugins={[rehypeRaw, [rehypeSanitize, sanitizeSchema]]}
                         components={{
-                          img: ({ src, alt, ...props }) => (
+                          img: ({ node: _node, src, alt, ...props }) => (
                             <img
                               {...props}
                               src={resolveAssetUrl(
@@ -241,7 +241,7 @@ export function AppModal({ app, onClose }: AppModalProps) {
                               loading="lazy"
                             />
                           ),
-                          source: ({ srcSet, ...props }) => (
+                          source: ({ node: _node, srcSet, ...props }) => (
                             <source
                               {...props}
                               srcSet={resolveAssetUrl(
@@ -252,7 +252,7 @@ export function AppModal({ app, onClose }: AppModalProps) {
                               )}
                             />
                           ),
-                          a: ({ href, children, ...props }) => (
+                          a: ({ node: _node, href, children, ...props }) => (
                             <a
                               {...props}
                               href={resolveLinkUrl(

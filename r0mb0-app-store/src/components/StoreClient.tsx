@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import Fuse from 'fuse.js';
 import { CatalogResponse, StoreApp } from '@/types/repo';
 import {
@@ -136,6 +136,8 @@ export function StoreClient() {
     setSelectedTags([]);
   };
 
+  const handleCloseModal = useCallback(() => setSelectedApp(null), []);
+
   const handleResetAll = () => {
     setQuery('');
     setSelectedCategory(null);
@@ -238,7 +240,7 @@ export function StoreClient() {
         )}
       </main>
 
-      <AppModal app={selectedApp} onClose={() => setSelectedApp(null)} />
+      <AppModal app={selectedApp} onClose={handleCloseModal} />
     </div>
   );
 }

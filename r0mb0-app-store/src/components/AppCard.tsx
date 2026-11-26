@@ -22,6 +22,14 @@ export function AppCard({ app, onSelect, index }: AppCardProps) {
       transition={{ duration: 0.35, delay: Math.min(index * 0.03, 0.3) }}
       whileHover={{ y: -6 }}
       onClick={() => onSelect(app)}
+      onKeyDown={(e) => {
+        if (e.key === 'Enter' || e.key === ' ') {
+          e.preventDefault();
+          onSelect(app);
+        }
+      }}
+      role="button"
+      tabIndex={0}
       className="group cursor-pointer rounded-3xl bg-white dark:bg-zinc-900/90 border border-zinc-200/80 dark:border-zinc-800/80 overflow-hidden shadow-sm hover:shadow-xl hover:shadow-blue-500/10 dark:hover:shadow-blue-500/5 transition-shadow flex flex-col"
     >
       <div className="relative h-44 w-full overflow-hidden bg-gradient-to-br from-zinc-100 to-zinc-200 dark:from-zinc-800 dark:to-zinc-900">
@@ -62,11 +70,11 @@ export function AppCard({ app, onSelect, index }: AppCardProps) {
           )}
         </div>
 
-        <p className="mt-2 text-sm text-zinc-600 dark:text-zinc-400 line-clamp-2 leading-relaxed">
+        <p className="mt-2 mb-4 text-sm text-zinc-600 dark:text-zinc-400 line-clamp-2 leading-relaxed">
           {app.description || t.noDescription}
         </p>
 
-        <div className="mt-4 pt-3 border-t border-zinc-100 dark:border-zinc-800/80 flex items-center justify-between gap-2 mt-auto">
+        <div className="pt-3 border-t border-zinc-100 dark:border-zinc-800/80 flex items-center justify-between gap-2 mt-auto">
           <div className="flex flex-wrap gap-1.5 overflow-hidden max-h-6">
             {app.topics.slice(0, 3).map((topic) => (
               <span
