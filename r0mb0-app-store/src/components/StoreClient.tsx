@@ -1,12 +1,20 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
+import Fuse from 'fuse.js';
 import { CatalogResponse, StoreApp } from '@/types/repo';
+import {
+  buildCategoryTrunk,
+  buildSubTagBranches,
+  getAppCategories,
+} from '@/lib/categorizer';
 import { LoadingScreen } from './LoadingScreen';
 import { ThemeToggle } from './ThemeToggle';
+import { SearchBar } from './SearchBar';
+import { TagTree } from './TagTree';
 import { AppCard } from './AppCard';
 import { AppModal } from './AppModal';
-import { LayoutGrid, RefreshCw } from 'lucide-react';
+import { LayoutGrid, RefreshCw, SearchX } from 'lucide-react';
 import { motion } from 'framer-motion';
 
 export function StoreClient() {
@@ -14,6 +22,11 @@ export function StoreClient() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [selectedApp, setSelectedApp] = useState<StoreApp | null>(null);
+
+  // Stati di ricerca e navigazione ad albero
+  const [query, setQuery] = useState('');
+  const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
+  const [selectedTags, setSelectedTags] = useState<string[]>([]);
 
   const loadCatalog = async () => {
     setLoading(true);
@@ -34,6 +47,68 @@ export function StoreClient() {
     loadCatalog();
   }, []);
 
+  const apps = useMemo(() => catalog?.apps ?? [], [catalog]);
+
+  // 1. Tronco delle categorie (calcolato su tutte le app)
+  const categories = useMemo(() => buildCategoryTrunk(apps), [apps]);
+
+  // 2. Filtro per Categoria + Sotto-tag selezionati
+  const treeFilteredApps = useMemo(() => {
+    return apps.filter((app) => {
+      if (selectedCategory && !getAppCategories(app).includes(selectedCategory)) {
+        return false;
+      }
+      if (selectedTags.length > 0) {
+        return selectedTags.every((tag) => app.topics.includes(tag));
+      }
+      return true;
+    });
+  }, [apps, selectedCategory, selectedTags]);
+
+  // 3. Rami (sotto-tag) disponibili nel nodo corrente dell'albero
+  const subTags = useMemo(
+    () => buildSubTagBranches(treeFilteredApps, selectedTags),
+    [treeFilteredApps, selectedTags]
+  );
+
+  // 4. Istanza Fuse.js per ricerca fuzzy intelligente
+  const fuse = useMemo(() => {
+    return new Fuse(treeFilteredApps, {
+      keys: [
+        { name: 'name', weight: 0.45 },
+        { name: 'topics', weight: 0.3 },
+        { name: 'description', weight: 0.2 },
+        { name: 'readme', weight: 0.05 },
+      ],
+      threshold: 0.35,
+      ignoreLocation: true,
+    });
+  }, [treeFilteredApps]);
+
+  // 5. Risultati finali
+  const visibleApps = useMemo(() => {
+    const trimmed = query.trim();
+    if (!trimmed) return treeFilteredApps;
+    return fuse.search(trimmed).map((res) => res.item);
+  }, [query, treeFilteredApps, fuse]);
+
+  const handleToggleTag = (tag: string) => {
+    setSelectedTags((prev) =>
+      prev.includes(tag) ? prev.filter((t) => t !== tag) : [...prev, tag]
+    );
+  };
+
+  const handleSelectCategory = (id: string | null) => {
+    setSelectedCategory(id);
+    setSelectedTags([]); // Riparte dal tronco scelto
+  };
+
+  const handleResetAll = () => {
+    setQuery('');
+    setSelectedCategory(null);
+    setSelectedTags([]);
+  };
+
   if (loading) return <LoadingScreen />;
 
   if (error || !catalog) {
@@ -53,7 +128,7 @@ export function StoreClient() {
 
   return (
     <div className="min-h-screen flex flex-col">
-      {/* Navbar arrotondata con effetto vetro */}
+      {/* Navbar */}
       <header className="sticky top-0 z-30 backdrop-blur-xl bg-zinc-50/80 dark:bg-zinc-950/80 border-b border-zinc-200/70 dark:border-zinc-800/70">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 h-16 flex items-center justify-between gap-4">
           <div className="flex items-center gap-3">
@@ -74,21 +149,56 @@ export function StoreClient() {
         </div>
       </header>
 
-      {/* Griglia dei progetti */}
-      <main className="max-w-7xl w-full mx-auto px-4 sm:px-6 py-8 flex-1">
-        <motion.div
-          layout
-          className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6"
-        >
-          {catalog.apps.map((app, index) => (
-            <AppCard
-              key={app.id}
-              app={app}
-              index={index}
-              onSelect={setSelectedApp}
-            />
-          ))}
-        </motion.div>
+      {/* Contenuto principale */}
+      <main className="max-w-7xl w-full mx-auto px-4 sm:px-6 py-8 flex-1 space-y-6">
+        {/* Barra di ricerca intelligente */}
+        <SearchBar
+          value={query}
+          onChange={setQuery}
+          totalResults={visibleApps.length}
+        />
+
+        {/* Albero dei Tag (Tronco -> Rami) */}
+        <TagTree
+          categories={categories}
+          selectedCategory={selectedCategory}
+          onSelectCategory={handleSelectCategory}
+          selectedTags={selectedTags}
+          onToggleTag={handleToggleTag}
+          subTags={subTags}
+          onResetAll={handleResetAll}
+        />
+
+        {/* Griglia dei risultati */}
+        {visibleApps.length > 0 ? (
+          <motion.div
+            layout
+            className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6"
+          >
+            {visibleApps.map((app, index) => (
+              <AppCard
+                key={app.id}
+                app={app}
+                index={index}
+                onSelect={setSelectedApp}
+              />
+            ))}
+          </motion.div>
+        ) : (
+          <div className="py-16 flex flex-col items-center justify-center text-center rounded-3xl border border-dashed border-zinc-300 dark:border-zinc-800">
+            <SearchX className="w-12 h-12 text-zinc-400 mb-3" />
+            <h3 className="text-lg font-bold">Nessun progetto trovato</h3>
+            <p className="text-sm text-zinc-500 dark:text-zinc-400 mt-1 mb-5">
+              Prova a cambiare parola chiave o a rimuovere qualche filtro dall&apos;albero.
+            </p>
+            <button
+              onClick={handleResetAll}
+              className="px-5 py-2.5 rounded-full text-sm font-semibold bg-blue-600 text-white hover:bg-blue-700 transition-colors"
+            >
+              Mostra tutti i progetti
+            </button>
+          </div>
+        )}
       </main>
 
       {/* Modale di approfondimento */}
